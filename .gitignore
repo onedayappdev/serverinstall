@@ -3,6 +3,9 @@
 *.sublime-project
 *.sublime-workspace
 
+### OSX underscore files ###
+._*
+
 ### json lock ###
 package-lock.json
 
