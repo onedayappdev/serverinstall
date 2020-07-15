@@ -131,7 +131,7 @@
       vars:
         authdb_name: "authdb"
         authdb_user: "authdbuser"
-        authdb_pass: "{{ lookup('password', '~/ansible-authdb_user-database-password.txt length=32 chars=ascii_letters,digits') }}"
+        authdb_pass: "{{ lookup('password', '~/ansible-authdbuser-database-password.txt length=32 chars=ascii_letters,digits') }}"
       postgresql_query:
         db: "{{ authdb_name }}"
         login_user: "{{ authdb_user }}"
