@@ -1,5 +1,4 @@
-
-![OneDayLogo](https://i.imgur.com/A0zTzeL.png)
+[![One Day Apps YT Channel](https://i.imgur.com/A0zTzeL.png)](https://www.youtube.com/channel/UCQYESk6B3GvTonwfmxghZgg "One Day Apps")
 
 Ansible scripts to install PostgreSQL, Postgrest, Glewlwyd, Nodered, RSS-Bridge, Nginx, phpPgAdmin, Apticron, and UFW on a new Ubuntu 20.04 LTS server.
 
@@ -8,7 +7,7 @@ Ansible scripts to install PostgreSQL, Postgrest, Glewlwyd, Nodered, RSS-Bridge,
 
 It's an automated deployment that follows the video tutorial series I've started here:
 
-[![IMAGE ALT TEXT](http://img.youtube.com/vi/DXmrK0M5sn8/0.jpg)](http://www.youtube.com/watch?v=DXmrK0M5sn8 "DNS and a Server")
+[![DNS and a Server](http://img.youtube.com/vi/DXmrK0M5sn8/0.jpg)](http://www.youtube.com/watch?v=DXmrK0M5sn8 "DNS and a Server")
 
 This is all of the back-end requried to set up a database, an API that talks to that database, an authentication server, and some scraping and low-code development tools that might be useful to go with them for fetching data out of remote services.
 
