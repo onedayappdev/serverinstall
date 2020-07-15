@@ -1,5 +1,5 @@
 
-![OneDayLogo](https://i.imgur.com/NauA27C.png)
+![OneDayLogo](https://i.imgur.com/A0zTzeL.png)
 
 Ansible scripts to install PostgreSQL, Postgrest, Glewlwyd, Nodered, RSS-Bridge, Nginx, phpPgAdmin, Apticron, and UFW on a new Ubuntu 20.04 LTS server.
 
