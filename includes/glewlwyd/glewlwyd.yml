@@ -34,7 +34,6 @@
         mode: 0755
       loop:
         - { path: "/etc/glewlwyd", owner: "glewlwyd", group: "glewlwyd" }
-        - { path: "/var/log/glewlwyd", owner: "glewlwyd", group: "glewlwyd" }
         - { path: "/var/run/glewlwyd", owner: "glewlwyd", group: "glewlwyd" }
         - { path: "/usr/local/src/glewlwyd", owner: "root", group: "root" }
       register: glewlwyd_config_create
@@ -59,15 +58,6 @@
         - { dpkg: "/usr/local/src/glewlwyd/libiddawc_0.9.5_ubuntu_focal_x86_64.deb" }
         - { dpkg: "/usr/local/src/glewlwyd/glewlwyd_2.3.1_ubuntu_focal_x86_64.deb" }
       when: glewlwyd_install.stat.exists == false
-
-    - name: Create Glewlwyd log file...
-      file:
-        path: /var/log/glewlwyd/glewlwyd.log
-        state: touch
-        owner: glewlwyd
-        group: glewlwyd
-        mode: 0640
-      register: glewlwyd_log_create
 
     - name: Create Glewlwyd config file...
       vars:
