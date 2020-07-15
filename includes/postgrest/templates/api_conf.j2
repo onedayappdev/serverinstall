@@ -1,0 +1,6 @@
+db-uri = "postgres://{{ pgrstdb_user }}:{{ pgrstdb_pass }}@/api"
+db-schema = "public"
+db-anon-role = "web_anon"
+jwt-secret = "{{ glewlwyd_key }}"
+role-claim-key = ".role"
+openapi-server-proxy-uri = "https://{{ ansible_fqdn }}:443"

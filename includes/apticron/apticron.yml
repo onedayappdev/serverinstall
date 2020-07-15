@@ -1,0 +1,35 @@
+    - name: Check to see if apticron files already exist on server...
+      stat:
+        path: /etc/apticron/apticron.conf
+      check_mode: True
+      register: apticron_conf
+
+    - name: Copy apticron default config...
+      copy:
+        remote_src: True
+        src: /usr/lib/apticron/apticron.conf
+        dest: /etc/apticron/apticron.conf
+        mode: 0640
+      when: apticron_conf.stat.exists == false
+
+    - name: Configure apticron for server update notifications...
+      replace:
+        path: /etc/apticron/apticron.conf
+        after: "{{ item.after }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { after: 'Set CUSTOM_SUBJECT if you', regexp: '^#\s*?(CUSTOM_SUBJECT)(=.*?)$', replace: '\1="[apticron] $SYSTEM: $NUM_PACKAGES package update(s)"' }
+        - { after: '# Set CUSTOM_FROM if you', regexp: '^#\s*?(CUSTOM_FROM)(=.*?)$', replace: '\1="{{ ans_mailaddr }}"' }
+      loop_control:
+        index_var: index
+
+    - name: Create a daily cron job for apticron...
+      cron:
+        name: apticron
+        minute: "30"
+        hour: "4"
+        user: root
+        job: 'root if test -x /usr/sbin/apticron; then /usr/sbin/apticron --cron; else true; fi'
+        cron_file: apticron

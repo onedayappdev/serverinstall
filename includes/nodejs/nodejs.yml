@@ -1,0 +1,9 @@
+    - name: Add nodesource repository for the present LTS version...
+      shell: 'curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -'
+      args:
+        warn: False
+
+    - name: Install nodejs...
+      apt:
+        name: nodejs
+        update_cache: True

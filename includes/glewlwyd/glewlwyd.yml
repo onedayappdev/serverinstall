@@ -1,0 +1,170 @@
+    - name: Create Glewlwyd user and group...
+      user:
+        name: glewlwyd
+        home: /usr/share/glewlwyd
+        create_home: False
+        system: True
+
+    - name: Check if Glewlwyd source files exist in /usr/local/src...
+      find:
+        paths: /usr/local/src
+        patterns: glewlwyd-full_2.3.1_ubuntu_focal_x86_64.tar.gz
+      register: glewlwyd_src_check
+
+    - name: Download Glewlwyd if it doesn't exist in /usr/src...
+      get_url:
+        url: https://github.com/onedayappdev/glewlwyd/raw/master/glewlwyd-full_2.3.1_ubuntu_focal_x86_64.tar.gz
+        dest: /usr/local/src/glewlwyd-full_2.3.1_ubuntu_focal_x86_64.tar.gz
+        mode: 0644
+      when: (glewlwyd_src_check.matched == 0) or
+            (glewlwyd_src_check.changed == true)
+
+    - name: Check to see if Glewlwyd files already exist on server...
+      stat:
+        path: /usr/share/glewlwyd/README.md
+      check_mode: True
+      register: glewlwyd_install
+
+    - name: Create Glewlwyd config, log, src, and run folders...
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: 0755
+      loop:
+        - { path: "/etc/glewlwyd", owner: "glewlwyd", group: "glewlwyd" }
+        - { path: "/var/log/glewlwyd", owner: "glewlwyd", group: "glewlwyd" }
+        - { path: "/var/run/glewlwyd", owner: "glewlwyd", group: "glewlwyd" }
+        - { path: "/usr/local/src/glewlwyd", owner: "root", group: "root" }
+      register: glewlwyd_config_create
+
+    - name: Unzip Glewlwyd source files if a fresh download...
+      unarchive:
+        src: /usr/local/src/glewlwyd-full_2.3.1_ubuntu_focal_x86_64.tar.gz
+        dest: /usr/local/src/glewlwyd
+        remote_src: True
+        mode: 0755
+      when: glewlwyd_install.stat.exists == false
+
+    - name: Install Glewlwyd .deb packages...
+      apt:
+        deb: "{{ item.dpkg }}"
+      loop:
+        - { dpkg: "/usr/local/src/glewlwyd/liborcania_2.1.0_ubuntu_focal_x86_64.deb" }
+        - { dpkg: "/usr/local/src/glewlwyd/libyder_1.4.10_ubuntu_focal_x86_64.deb" }
+        - { dpkg: "/usr/local/src/glewlwyd/libulfius_2.6.7_ubuntu_focal_x86_64.deb" }
+        - { dpkg: "/usr/local/src/glewlwyd/libhoel_1.4.16_ubuntu_focal_x86_64.deb" }
+        - { dpkg: "/usr/local/src/glewlwyd/librhonabwy_0.9.11_ubuntu_focal_x86_64.deb" }
+        - { dpkg: "/usr/local/src/glewlwyd/libiddawc_0.9.5_ubuntu_focal_x86_64.deb" }
+        - { dpkg: "/usr/local/src/glewlwyd/glewlwyd_2.3.1_ubuntu_focal_x86_64.deb" }
+      when: glewlwyd_install.stat.exists == false
+
+    - name: Create Glewlwyd log file...
+      file:
+        path: /var/log/glewlwyd/glewlwyd.log
+        state: touch
+        owner: glewlwyd
+        group: glewlwyd
+        mode: 0640
+      register: glewlwyd_log_create
+
+    - name: Create Glewlwyd config file...
+      vars:
+        authdb_name: "authdb"
+        authdb_user: "authdbuser"
+        authdb_pass: "{{ lookup('password', '~/ansible-authdb_user-database-password.txt length=32 chars=ascii_letters,digits') }}"
+      template:
+        src: templates/glewlwyd_conf.j2
+        dest: /etc/glewlwyd/glewlwyd.conf
+      when: glewlwyd_config_create.changed == true
+
+    - name: Add Glewlwyd user to postgres group for PostgreSQL socket access...
+      command: "usermod -aG postgres glewlwyd"
+      when: glewlwyd_config_create.changed == true
+
+    - name: Create Glewlwyd systemd service...
+      template:
+        src: templates/glewlwyd_service.j2
+        dest: /etc/systemd/system/glewlwyd.service
+      when: glewlwyd_config_create.changed == true
+
+    - name: Create Glewlwyd init script...
+      template:
+        src: templates/glewlwyd_init.j2
+        dest: /etc/init.d/glewlwyd
+        mode: 0755
+      when: glewlwyd_config_create.changed == true
+
+    - name: Add pgcrypto extension to the Glewlwyd database...
+      vars:
+        authdb_name: "authdb"
+      postgresql_ext:
+        name: pgcrypto
+        db: "{{ authdb_name }}"
+        schema: public
+      become: True
+      become_user: postgres
+      when: glewlwyd_config_create.changed == true
+ 
+    - name: Set Glewlwyd admin password, set roles fields in initial databse SQL script...
+      vars:
+        admin_pass: "{{ lookup('password', '~/ansible-admin-password.txt length=32 chars=ascii_letters,digits') }}"
+        roles_client: "('database', 0, 'database', 'Database backend', '{\"use-glewlwyd-connection\":true,\"data-format\":{\"redirect_uri\":{\"multiple\":true,\"read\":true,\"write\":true},\"authorization_type\":{\"multiple\":true,\"read\":true,\"write\":true},\"client_secret\":{\"read\":true,\"write\":true},\"pubkey\":{\"read\":true,\"write\":true},\"jwks\":{\"convert\":\"jwks\",\"read\":true,\"write\":true},\"jwks_uri\":{\"read\":true,\"write\":true},\"post_logout_redirect_uris\":{\"multiple\":true,\"read\":true,\"write\":true},\"token_endpoint_auth_method\":{\"multiple\":false,\"read\":true,\"write\":true},\"role\":{\"multiple\":false,\"read\":true,\"write\":true}}}', 0);"
+        roles_user: "('database', 0, 'database', 'Database backend', '{\"use-glewlwyd-connection\":true,\"data-format\":{\"picture\":{\"multiple\":false,\"read\":true,\"write\":true,\"profile-read\":true,\"profile-write\":true},\"role\":{\"multiple\":false,\"read\":true,\"write\":true,\"profile-read\":false,\"profile-write\":false}}}', 0);"
+      replace:
+        path: /usr/share/glewlwyd/docs/database/init.postgre.sql
+        after: "{{ item.after }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { after: "CREATE TABLE gs_oauth2_session", regexp: "^(INSERT INTO g_client_module_instance.*?VALUES\\s).*?$", replace: "\\1{{ roles_client }}" }
+        - { after: "CREATE TABLE gs_oauth2_session", regexp: "^(INSERT INTO g_user_module_instance.*?VALUES\\s).*?$", replace: "\\1{{ roles_user }}" }
+        - { after: "INSERT INTO g_client_module_instance", regexp: "^(INSERT INTO g_user \\(gu_username, gu_name, gu_password, gu_email, gu_enabled\\) VALUES \\('admin', 'The Administrator', crypt\\(').*?(', gen_salt\\('bf'\\)\\), '', 1\\);)$", replace: "\\1{{ admin_pass }}\\2" }
+      loop_control:
+        index_var: index
+      register: glewlwyd_db_init
+
+    - name: Set up Glewlwyd Oauth2 client for Postgrest...
+      vars:
+        glewlwyd_key: "{{ lookup('password', '~/ansible-glewlwyd-sha-key.txt length=64 chars=ascii_letters,digits') }}"
+      lineinfile:
+        path: /usr/share/glewlwyd/docs/database/init.postgre.sql
+        insertafter: EOF
+        regexp: "^INSERT INTO g_plugin_module_instance.*?VALUES\\s.*?$"
+        line: INSERT INTO g_plugin_module_instance (gpmi_id, gpmi_module, gpmi_name, gpmi_display_name, gpmi_parameters, gpmi_enabled) VALUES (1, 'oauth2-glewlwyd', 'postgrest', 'Local User Oauth2', '{"jwt-type":"sha","jwt-key-size":"256","key":"{{ glewlwyd_key }}","cert":"","access-token-duration":3600,"refresh-token-duration":1209600,"code-duration":600,"refresh-token-rolling":true,"auth-type-code-enabled":true,"auth-type-implicit-enabled":true,"auth-type-password-enabled":true,"auth-type-client-enabled":true,"auth-type-device-enabled":false,"auth-type-refresh-enabled":true,"scope":[{"name":"g_admin","refresh-token-rolling":true,"refresh-token-duration":0},{"name":"openid","refresh-token-rolling":true,"refresh-token-duration":0},{"name":"g_profile","refresh-token-rolling":true,"refresh-token-duration":0}],"additional-parameters":[{"user-parameter":"role","token-parameter":"role","token-changed":true}],"pkce-allowed":false,"pkce-method-plain-allowed":false,"introspection-revocation-allowed":true,"introspection-revocation-auth-scope":[],"introspection-revocation-allow-target-client":true,"device-authorization-expiration":600,"device-authorization-interval":5,"name":"postgrest"}', 1);
+        backup: False
+      when: glewlwyd_db_init.changed == true
+
+    - name: Migrate initial Glewlwyd database...
+      vars:
+        authdb_name: "authdb"
+        authdb_user: "authdbuser"
+        authdb_pass: "{{ lookup('password', '~/ansible-authdb_user-database-password.txt length=32 chars=ascii_letters,digits') }}"
+      postgresql_query:
+        db: "{{ authdb_name }}"
+        login_user: "{{ authdb_user }}"
+        login_password: "{{ authdb_pass }}"
+        path_to_script: /usr/share/glewlwyd/docs/database/init.postgre.sql
+      when: glewlwyd_db_init.changed == true
+
+    - name: Copy Glewlwyd webapp configs...
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: 0644
+        backup: True
+      loop:
+        - { src: "includes/glewlwyd/templates/config_json.j2", dest: "/usr/share/glewlwyd/webapp/config.json" }
+        - { src: "includes/glewlwyd/templates/translations_en.j2", dest: "/usr/share/glewlwyd/webapp/locales/en/translations.json" }
+        - { src: "includes/glewlwyd/templates/translations_fr.j2", dest: "/usr/share/glewlwyd/webapp/locales/fr/translations.json" }
+        - { src: "includes/glewlwyd/templates/translations_nl.j2", dest: "/usr/share/glewlwyd/webapp/locales/nl/translations.json" }
+      when: glewlwyd_db_init.changed == true
+
+    - name: Update-rc.d for Glewlwyd script...
+      shell: update-rc.d glewlwyd "{{ item.param }}"
+      loop:
+        - { param: "defaults" }
+        - { param: "enable" }
+      when: glewlwyd_config_create.changed == true

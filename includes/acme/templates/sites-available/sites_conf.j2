@@ -1,0 +1,83 @@
+server {
+    server_name {{ ansible_fqdn }};
+    listen 80 default_server;
+    listen [::]:80 default_server;
+        location ^~ /.well-known/acme-challenge {
+            proxy_pass http://127.0.0.1:81;
+            proxy_set_header Host $host;
+        }
+        location / {
+            return 301 https://$host$request_uri;
+        }
+}
+server {
+    server_name {{ ansible_fqdn }};
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
+    root /var/www/html/;
+        # Robots
+        location = /robots.txt {
+            allow all;
+            log_not_found off;
+            access_log off;
+        }
+        # NodeRED
+        location ^~ /nodered {
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_pass http://127.0.0.1:1880;
+        }
+        # RSS-Bridge
+        location ^~ /rssbridge {
+            root /var/www;
+            index index.php;
+            location ~* "\.php$" {
+                fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
+                set $path_info $fastcgi_path_info;
+                try_files $fastcgi_script_name =404;
+                include fastcgi_params;
+                include php_optimization.conf;
+                fastcgi_index index.php;
+            }
+        }
+        # PHP PG Admin
+        location ^~ /pgadmin {
+            root /var/www;
+            index index.php;
+            location ~* "\.php$" {
+                fastcgi_split_path_info ^(.+?\.php)(\/.*|)$;
+                set $path_info $fastcgi_path_info;
+                try_files $fastcgi_script_name =404;
+                include fastcgi_params;
+                include php_optimization.conf;
+                fastcgi_index index.php;
+            }    
+        }
+        # Glewlwyd
+        location ^~ /authsrv {
+            rewrite ^\/authsrv(.*) /$1 break;
+            proxy_set_header Authorization $http_authorization;
+            proxy_set_header Host $host;
+            proxy_pass         http://127.0.0.1:4593;
+        }
+        # Postgrest
+        location ^~ /api {
+            rewrite ^\/api(.*) $1 break;
+            default_type application/json;
+            proxy_set_header Connection "";
+            proxy_http_version 1.1;
+            proxy_pass http://postgrest;
+            expires -1;
+        }
+        location / {
+            index index.php index.html index.htm;
+        }
+        location ~ \.(?:flv|mp4|mov|m4a)$ {
+            mp4;
+            mp4_buffer_size 100M;
+            mp4_max_buffer_size {{ (ansible_memtotal_mb|int / 4) | round | int }}M;
+        }
+}

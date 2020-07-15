@@ -1,0 +1,35 @@
+# Example for a system wide configuration file
+# /etc/msmtprc
+ 
+# A system wide configuration file is optional.
+# If it exists, it usually defines a default account.
+# This allows msmtp to be used like /usr/sbin/sendmail.
+account default
+aliases /etc/aliases
+ 
+# The SMTP smarthost.
+# host mailhub.oursite.example
+ 
+# Construct envelope-from addresses of the form "user@oursite.example".
+#auto_from on
+#maildomain oursite.example
+ 
+# Construct envelope-from addresses of the form "user@oursite.example".
+# this fix the error: msmtp: account default from /etc/msmtprc-php: envelope-from address is missing
+### auto_from on
+ 
+# Use TLS.
+tls {{ smtp_tls }}
+tls_starttls {{ smtp_starttls }}
+ssl {{ smtp_ssl }}
+auth on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+ 
+# Syslog logging with facility LOG_MAIL instead of the default LOG_USER.
+syslog LOG_MAIL
+ 
+host {{ smtp_srv }}
+port {{ smtp_port }}
+from {{ smtp_from }}
+user {{ smtp_from }}
+password {{ smtp_pass }}

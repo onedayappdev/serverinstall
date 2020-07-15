@@ -1,0 +1,115 @@
+    - name: Create nodered user and group...
+      user:
+        name: nodered
+        home: /var/nodered/
+        shell: /bin/bash
+        generate_ssh_key: True
+        ssh_key_bits: 4096
+        ssh_key_file: /var/nodered/.ssh/nodered_rsa
+      register: nodered_check
+
+    - name: Authorize nodered ssh key...
+      copy:
+        remote_src: True
+        src: /var/nodered/.ssh/nodered_rsa.pub
+        dest: /var/nodered/.ssh/authorized_keys
+        owner: nodered
+        group: nodered
+        mode: 0600
+
+    - name: Create nodered app folder...
+      file:
+        path: /var/nodered/.node-red
+        state: directory
+        owner: nodered
+        group: nodered
+        mode: 0755
+      when: nodered_check.changed == true
+
+    - name: Install nodered and some common modules...
+      npm:
+        path: /var/nodered/.node-red
+        executable: /usr/bin/npm
+        name: "{{ item.module }}"
+        unsafe_perm: True
+      loop:
+        - { module: 'node-red' }
+        - { module: 'puppeteer' }
+        - { module: 'bcryptjs' }
+        - { module: 'node-red-contrib-actionflows' }
+        - { module: 'node-red-contrib-aws' }
+        - { module: 'node-red-contrib-image-tools' }
+        - { module: 'node-red-contrib-mydb' }
+        - { module: 'node-red-contrib-oauth2' }
+        - { module: 'node-red-contrib-storage-mongo' }
+        - { module: 'node-red-contrib-string' }
+        - { module: 'node-red-contrib-mssql-plus' }
+        - { module: 'node-red-contrib-couchdb' }
+      become: True
+      become_user: nodered
+
+    - name: Create symlink to nodered config from node_modules folder to app home folder...
+      file:
+        src: node_modules/node-red/settings.js
+        dest: /var/nodered/.node-red/settings.js
+        state: link
+
+    - name: Generate nodered Admin password...
+      vars:
+        admin_pass: "{{ lookup('password', '~/ansible-admin-password.txt length=32 chars=ascii_letters,digits') }}"
+      shell: node -e "console.log(require('bcryptjs').hashSync(process.argv[1], 8));" "{{ admin_pass }}"
+      become: True
+      become_user: nodered
+      args:
+        executable: /bin/bash
+        chdir: /var/nodered/.node-red/node_modules/node-red
+      register: nodered_adminpass
+      no_log: True
+
+    - name: Set nodered config variables...
+      vars:
+        admin_pass: "{{ lookup('password', '~/ansible-admin-password.txt length=32 chars=ascii_letters,digits') }}" 
+      replace:
+        path: /var/nodered/.node-red/settings.js
+        after: 'module.exports ='
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { regexp: '^(\s*?)//credentialSecret:\s*?.*?$', replace: '\1credentialSecret: "{{ admin_pass }}",' }
+        - { regexp: '^(\s*?)//httpRoot:.*?/.*?$', replace: '\1httpRoot: "/nodered",' }
+        - { regexp: '^(\s*?)//adminAuth:\s*?{\s*?$', replace: '\1adminAuth: {' }
+        - { regexp: '^(\s*?)//(\s*?)type:.*?,$', replace: '\1\2  type: "credentials",' }
+        - { regexp: '^(\s*?)//(\s*?)users:.*?$', replace: '\1\2  users: [{' }
+        - { regexp: '^(\s*?)//(\s*?)username:.*?$', replace: '\1\2  username: "admin",' }
+        - { regexp: '^(\s*?)//(\s*?)password:.*?$', replace: '\1\2  password: "{{ nodered_adminpass.stdout }}",' }
+        - { regexp: '^(\s*?)//(\s*?)permissions:.*?$', replace: '\1\2  permissions: "*"' }
+        - { regexp: '^(\s*?)//(\s*?)}].*?$', replace: '\1\2  }]' }
+        - { regexp: '^(\s*?)exportGlobalContextKeys:.*?$', replace: '\1exportGlobalContextKeys: true,' }
+        - { regexp: '^(\s*?)audit:.*?$', replace: '\1audit: true,' }
+        - { regexp: '^(\s*?)level:\s*?.info.,$', replace: '\1level: "debug",' }
+      loop_control:
+        index_var: index
+
+    - name: Close nodered Administrator config object...
+      replace:
+        path: /var/nodered/.node-red/settings.js
+        after: 'Securing Node-RED'
+        before: 'generating-the-password-hash'
+        regexp: '^(\s*?)//}.*?$'
+        replace: '\1  },'
+
+    - name: Enable puppeteer lib in nodered config...
+      lineinfile:
+        create: True
+        path: /var/nodered/.node-red/settings.js
+        insertafter: 'functionGlobalContext: {'
+        line: "puppeteer:require('puppeteer'),"
+
+    - name: Add nodered user to postgres group for PostgreSQL socket access...
+      command: "usermod -aG postgres nodered"
+
+    - name: Create nodered systemd service...
+      template:
+        src: templates/nodered_service.j2
+        dest: /etc/systemd/system/nodered.service

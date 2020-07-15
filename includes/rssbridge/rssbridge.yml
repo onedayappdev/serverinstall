@@ -1,0 +1,64 @@
+    - name: Check if rssbridge source files exist in /usr/local/src...
+      find:
+        paths: /usr/local/src
+        patterns: rssbridge.master.zip
+      register: rssbridge_src_check
+
+    - name: Download rssbridge if it doesn't exist in /usr/src...
+      get_url:
+        url: https://github.com/RSS-Bridge/rss-bridge/archive/master.zip
+        dest: /usr/local/src/rssbridge.master.zip
+        mode: 0644
+      when: (rssbridge_src_check.matched == 0) or
+            (rssbridge_src_check.changed == true)
+
+    - name: Check to see if rssbridge files already exist on webserver...
+      stat:
+        path: /var/www/rssbridge/config.ini.php
+      check_mode: True
+      register: rssbridge_install
+
+    - name: Unzip rssbridge source files if a fresh download...
+      unarchive:
+        src: /usr/local/src/rssbridge.master.zip
+        dest: /var/www
+        remote_src: True
+        owner: www-data
+        group: www-data
+        mode: 0644
+      when: rssbridge_install.stat.exists == false
+
+    - name: Rename rssbridge directory...
+      shell: mv /var/www/rss-bridge-master /var/www/rssbridge
+      when: rssbridge_install.stat.exists == false
+
+    - name: Copy default rssbridge config...
+      copy:
+        remote_src: True
+        src: /var/www/rssbridge/config.default.ini.php
+        dest: /var/www/rssbridge/config.ini.php
+        mode: 0640
+      register: rssbridge_newconfig
+      when: rssbridge_install.stat.exists == false
+
+    - name: Set rssbridge ini values...
+      vars:
+        rssbridge_password: "{{ lookup('password', '~/ansible-admin-password.txt length=32 chars=ascii_letters,digits') }}"
+      ini_file:
+        dest: /var/www/rssbridge/config.ini.php
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        create: False
+      loop:
+        - { section: 'system', option: 'timezone', value: '{{ ans_timezone.stdout }}' }
+        - { section: 'authentication', option: 'enable', value: 'true' }
+        - { section: 'authentication', option: 'username', value: 'admin' }
+        - { section: 'authentication', option: 'password', value: '{{ rssbridge_password }}' }
+      when: rssbridge_newconfig.changed == true
+
+    - name: Set permissions on rssbridge directories...
+      shell: find /var/www/rssbridge -type d -exec chmod -c 0755 {} \;
+
+    - name: Set permissions on rssbridge files...
+      shell: find /var/www/rssbridge -type f -exec chmod -c 0644 {} \;

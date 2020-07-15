@@ -1,0 +1,17 @@
+[Unit]
+Description=Node-RED Server
+After=postgresql.service
+
+[Service]
+ExecStart=/usr/bin/node /var/nodered/.node-red/node_modules/node-red/red.js
+Restart=always
+StartLimitIntervalSec=0
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=Node-RED-Server
+User=nodered
+Group=nodered
+
+[Install]
+WantedBy=multi-user.target

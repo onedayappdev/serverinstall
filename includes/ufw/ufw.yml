@@ -1,0 +1,30 @@
+    - name: Install ufw...
+      apt: 
+        name: ufw
+
+    - name: Set up ufw firewall...
+      ufw:
+        state: disabled
+        default: deny
+
+    - name: Allow SSH, port 80, and port 443 from the internet, restrict all others...
+      ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: tcp
+      loop:
+        - { port: '443' }
+        - { port: '80' }
+        - { port: '22' }
+      register: ufw_allow
+
+    - name: Enable ufw...
+      ufw:
+        state: enabled
+      when: ufw_allow.changed == true
+
+    - name: Ensure ufw service is enabled...
+      systemd:
+        name: ufw
+        enabled: True
+        state: restarted

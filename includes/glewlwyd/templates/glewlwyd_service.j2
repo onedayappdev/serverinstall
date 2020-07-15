@@ -1,0 +1,18 @@
+[Unit]
+Description=Glewlwyd OAuth2 authentication provider
+After=postgresql.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/glewlwyd/glewlwyd.conf
+ExecStart=/usr/bin/glewlwyd --config-file=/etc/glewlwyd/glewlwyd.conf
+User=glewlwyd
+Group=glewlwyd
+KillMode=process
+Restart=always
+StartLimitIntervalSec=0
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+Alias=glewlwyd

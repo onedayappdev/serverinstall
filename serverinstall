@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+
+PATH=$PATH ; export PATH
+
+echo "\n\nIf you make a mistake, it's best to kill this program (CTRL-C)
+and start over rather than submitting typos which will need to
+be fixed manually on the server later.\n\n"
+
+read -p "Enter your server's SSH address : " TARGET_HOST
+read -p "Enter your server's domain name : " TARGET_HOSTNAME
+read -p "Enter an email address for server notifications : " TARGET_EMAILADDR
+read -p "Enter that email account's password (no 2FA! make an \"app password\") : " TARGET_EMAILPASS
+read -p "Install a firewall (recommended)? It will restrict incoming traffic EXCEPT websites and ssh (y/n)? : " UFW_ANSWER
+
+MAILDOMAIN=`echo $TARGET_EMAILADDR | sed -e 's/.*@\(.*\)$/\1/'`
+
+if [ "$MAILDOMAIN" != "gmail.com" ] && [ "$MAILDOMAIN" != "yahoo.com" ] && [ "$MAILDOMAIN" != "aol.com" ] && [ "$MAILDOMAIN" != "outlook.com" ] && [ "$MAILDOMAIN" != "hotmail.com" ]
+then
+	read -p "I don't know how the email for $MAILDOMAIN is sent, I need the smtp (outgoing) server address : " TARGET_SMTP
+	read -p "Next I need the $MAILDOMAIN SMTP server port (probably 587 or 465) : " TARGET_SMTPPORT
+	read -p "Should TLS be enabled (probably yes on port 587) for $MAILDOMAIN mail? (y/n) : " TARGET_SMTPTLS
+	read -p "Should STARTTLS be enabled (probably yes on port 587) for $MAILDOMAIN mail? (y/n) : " TARGET_SMTPSTLS
+    read -p "Should SSL be enabled (probably yes on port 465, probably no on port 587) for $MAILDOMAIN mail? (y/n) : " TARGET_SMTPSSL
+fi
+
+export TARGET_HOST
+export TARGET_HOSTNAME
+export TARGET_EMAILADDR
+export TARGET_EMAILPASS
+export UFW_ANSWER
+export TARGET_SMTP
+export TARGET_SMTPPORT
+export TARGET_SMTPTLS
+export TARGET_STARTTLS
+export TARGET_SMTPSSL
+
+ansible-playbook ./includes/main.yml -i "$TARGET_HOST",
+
+exit 0;

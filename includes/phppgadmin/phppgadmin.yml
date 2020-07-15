@@ -1,0 +1,126 @@
+    - name: Check if phpPgAdmin source files exist in /usr/local/src...
+      find:
+        paths: /usr/local/src
+        patterns: REL_7-12-1.zip
+      register: pgadmin_src_check
+
+    - name: Check if phpPgAdmin DBDesigner source files exist in /usr/local/src...
+      find:
+        paths: /usr/local/src
+        patterns: dbdesigner-master.zip
+      register: dbdesigner_src_check
+
+    - name: Download phpPgAdmin if it doesn't exist in /usr/src...
+      get_url:
+        url: https://github.com/onedayappdev/phppgadmin/archive/REL_7-12-1.zip
+        dest: /usr/local/src/REL_7-12-1.zip
+        mode: 0664
+      when: (pgadmin_src_check.matched == 0) or
+            (pgadmin_src_check.changed == true)
+
+    - name: Download DBDesigner plugin if it doesn't exist in /usr/src...
+      get_url:
+        url: https://github.com/onedayappdev/DBDesigner/archive/master.zip
+        dest: /usr/local/src/dbdesigner-master.zip
+        mode: 0664
+      when: (dbdesigner_src_check.matched == 0) or
+            (dbdesigner_src_check.changed == true)
+
+    - name: Check to see if phpPgAdmin files already exist on webserver...
+      stat:
+        path: /var/www/pgadmin/
+      check_mode: True
+      register: pgadmin_install
+
+    - name: Check to see if DBDesigner files already exist on webserver...
+      stat:
+        path: /var/www/pgadmin/plugins/DBDesigner
+      check_mode: True
+      register: dbdesigner_install
+
+    - name: Unzip phpPgAdmin source files if a fresh download...
+      unarchive:
+        src: /usr/local/src/REL_7-12-1.zip
+        dest: /var/www
+        remote_src: True
+        owner: www-data
+        group: www-data
+        mode: 0644
+      when: pgadmin_install.stat.exists == false
+
+    - name: Rename phpPgAdmin directory...
+      shell: mv /var/www/phppgadmin-REL_7-12-1 /var/www/pgadmin
+      when: pgadmin_install.stat.exists == false
+
+    - name: Create phpPgAdmin config...
+      template:
+        src: templates/config_inc_php.j2
+        dest: /var/www/pgadmin/conf/config.inc.php
+        group: www-data
+        owner: www-data
+        mode: 0640
+      when: pgadmin_install.stat.exists == false
+
+    - name: Unzip phpPgAdmin DBDesigner plugin...
+      unarchive:
+        src: /usr/local/src/dbdesigner-master.zip
+        dest: /var/www/pgadmin/plugins
+        remote_src: True
+        owner: www-data
+        group: www-data
+        mode: 0644
+      when: (pgadmin_install.stat.exists == false) and
+            (dbdesigner_install.stat.exists == false)
+
+    - name: Rename DBDesigner plugin directory...
+      shell: mv /var/www/pgadmin/plugins/DBDesigner-master /var/www/pgadmin/plugins/DBDesigner
+      when: (pgadmin_install.stat.exists == false) and
+            (dbdesigner_install.stat.exists == false)
+
+    - name: Copy DBDesigner database creation sql script...
+      copy:
+        remote_src: True
+        src: /var/www/pgadmin/plugins/DBDesigner/sql/erdiagrams-pgsql.sql
+        dest: /var/lib/postgresql/erdiagrams-pgsql.sql
+        mode: 0644
+        owner: postgres
+        group: postgres
+      register: dbdesigner_createdb
+      when: (pgadmin_install.stat.exists == false) and
+            (dbdesigner_install.stat.exists == false)
+
+    - name: Create DBDesigner database...
+      become: True
+      become_user: postgres
+      postgresql_db:
+        login_unix_socket: /var/run/postgresql/
+        name: phppgadmin
+        encoding: UTF-8
+        template: template1
+        owner: admin
+      register: dbdesigner_createdb
+      when: (pgadmin_install.stat.exists == false) and
+            (dbdesigner_install.stat.exists == false)
+
+    - name: Create DBDesigner tables...
+      shell: "psql -d phppgadmin -f /var/lib/postgresql/erdiagrams-pgsql.sql"
+      become: True
+      become_user: postgres
+      when: (pgadmin_install.stat.exists == false) and
+            (dbdesigner_install.stat.exists == false) and
+            (dbdesigner_createdb.changed == true)
+
+    - name: Clean up DBDesigner sql script...
+      file:
+        path: /var/lib/postgresql/erdiagrams-pgsql.sql
+        recurse: False
+        state: absent
+      when: (pgadmin_install.stat.exists == false) and
+            (dbdesigner_install.stat.exists == false) and
+            (dbdesigner_createdb.changed == true)
+
+    - name: Set permissions on phpPgAdmin directories...
+      shell: find /var/www/pgadmin -type d -exec chmod -c 0755 {} \;
+
+    - name: Set permissions on phpPgAdmin files...
+      shell: find /var/www/pgadmin -type f -exec chmod -c 0644 {} \;

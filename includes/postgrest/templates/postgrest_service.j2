@@ -1,0 +1,18 @@
+[Unit]
+Description=REST API for PostgreSQL
+After=postgresql.service
+
+[Service]
+ExecStart=/usr/local/sbin/postgrest /etc/postgrest/api.conf
+ExecReload=/bin/kill -SIGUSR1 $MAINPID
+Restart=always
+StartLimitIntervalSec=0
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=Postgrest-API-Server
+User=postgrest
+Group=postgrest
+
+[Install]
+WantedBy=multi-user.target

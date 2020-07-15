@@ -1,0 +1,7 @@
+smtp_srv: "{{ ans_mailsmtp }}"
+smtp_port: "{{ ans_mailport }}"
+smtp_tls: "{{ ans_mailtls }}"
+smtp_starttls: "{{ ans_mailstls }}"
+smtp_ssl: "{{ ans_mailssl }}"
+smtp_from: "{{ ans_mailaddr }}"
+smtp_pass: "{{ lookup('env','TARGET_EMAILPASS') }}"

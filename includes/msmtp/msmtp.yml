@@ -1,0 +1,42 @@
+    - name: Set SMTP variables for admin email (hotmail, aol, gmail, etc)...
+      include_vars: "vars/{{ ans_maildomain }}.yml"
+      when: (ans_maildomain == "gmail.com") or
+            (ans_maildomain == "yahoo.com") or
+            (ans_maildomain == "hotmail.com") or
+            (ans_maildomain == "outlook.com") or
+            (ans_maildomain == "aol.com") or
+            (ans_maildomain == "mac.com") or
+            (ans_maildomain == "me.com") or
+            (ans_maildomain == "icloud.com")
+
+    - name: Set SMTP variables for admin email (custom/other domain)...
+      include_vars: "vars/other.com.yml"
+      when: (ans_maildomain != "gmail.com") and
+            (ans_maildomain != "yahoo.com") and
+            (ans_maildomain != "hotmail.com") and
+            (ans_maildomain != "outlook.com") and
+            (ans_maildomain != "aol.com") and
+            (ans_maildomain != "mac.com") and
+            (ans_maildomain != "me.com") and
+            (ans_maildomain != "icloud.com")
+
+    - name: Set up msmtp config from template...
+      template:
+        src: templates/msmtp.j2
+        dest: /etc/msmtprc
+        backup: True
+        mode: 0600
+        owner: root
+      no_log: True
+
+    - name: Add email aliases for root and default...
+      template:
+        src: templates/aliases.j2
+        dest: /etc/aliases
+        backup: True
+        mode: 0644
+        owner: root
+      no_log: True
+
+    - name: Run newaliases after msmtp alias config...
+      command: newaliases

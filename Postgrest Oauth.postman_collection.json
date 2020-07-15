@@ -1,0 +1,253 @@
+{
+	"info": {
+		"_postman_id": "536d7db7-2040-41f1-9980-10c7bdeb8461",
+		"name": "Postgrest Oauth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "token admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "bc120156-d25b-46b0-a4a6-d4b9112ab8fd",
+						"exec": [
+							"var data = pm.response.json();",
+							"pm.environment.set('actoken', data.access_token);",
+							"",
+							"var data = pm.response.json();",
+							"pm.environment.set('retoken', data.refresh_token);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "{{username_admin}}",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "{{password_admin}}",
+							"type": "text"
+						},
+						{
+							"key": "grant_type",
+							"value": "{{grant}}",
+							"type": "text"
+						},
+						{
+							"key": "scope",
+							"value": "{{scope}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{url}}/authsrv/api/postgrest/token",
+					"protocol": "https",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"authsrv",
+						"api",
+						"postgrest",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "token user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "bbedfd6d-0d7f-488f-80fc-374b6476ba82",
+						"exec": [
+							"var data = pm.response.json();",
+							"pm.environment.set('actoken', data.access_token);",
+							"",
+							"var data = pm.response.json();",
+							"pm.environment.set('retoken', data.refresh_token);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "{{username_user}}",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "{{password_user}}",
+							"type": "text"
+						},
+						{
+							"key": "grant_type",
+							"value": "{{grant}}",
+							"type": "text"
+						},
+						{
+							"key": "scope",
+							"value": "{{scope}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{url}}/authsrv/api/postgrest/token",
+					"protocol": "https",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"authsrv",
+						"api",
+						"postgrest",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "refresh token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "b43a2fd3-7642-49a3-8ce5-b65ec0ad3782",
+						"exec": [
+							"var data = pm.response.json();",
+							"pm.environment.set('actoken', data.access_token);",
+							"",
+							"var data = pm.response.json();",
+							"pm.environment.set('retoken', data.refresh_token);",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "{{refresh}}",
+							"type": "text"
+						},
+						{
+							"key": "refresh_token",
+							"value": "{{retoken}}",
+							"type": "text"
+						},
+						{
+							"key": "scope",
+							"value": "{{scope}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{url}}/authsrv/api/postgrest/token",
+					"protocol": "https",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"authsrv",
+						"api",
+						"postgrest",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Postgrest Swagger",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"host": true,
+					"user-agent": true,
+					"accept": true,
+					"accept-encoding": true,
+					"connection": true
+				}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{actoken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://{{url}}/api",
+					"protocol": "https",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "42ee163c-9744-42f7-8dd6-42355f92b517",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "a3b38003-96b2-4690-b594-89a9efa0f0f5",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"protocolProfileBehavior": {}
+}

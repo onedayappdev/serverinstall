@@ -1,0 +1,93 @@
+    - name: Set fpm php www pool values...
+      ini_file:
+        dest: "/etc/php/{{ ans_phpver.stdout }}/fpm/pool.d/www.conf"
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        create: False
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { section: 'www', option: 'pm.max_children', value: '240' }
+        - { section: 'www', option: 'pm.start_servers', value: '20' }
+        - { section: 'www', option: 'pm.min_spare_servers', value: '10' }
+        - { section: 'www', option: 'pm.max_spare_servers', value: '20' }
+        - { section: 'www', option: 'pm.max_requests', value: '512' }
+        - { section: 'www', option: 'env[HOSTNAME]', value: '$HOSTNAME' }
+        - { section: 'www', option: 'env[PATH]', value: '/usr/local/bin:/usr/bin:/bin' }
+        - { section: 'www', option: 'env[TMP]', value: '/tmp' }
+        - { section: 'www', option: 'env[TMPDIR]', value: '/tmp' }
+        - { section: 'www', option: 'env[TEMP]', value: '/tmp' }
+        - { section: 'www', option: 'security.limit_extensions', value: '.php .mp4'}
+      loop_control:
+        index_var: index
+      register: php_fpm_www_conf
+
+    - name: Set php cli ini values...
+      ini_file:
+        dest: "/etc/php/{{ ans_phpver.stdout }}/cli/php.ini"
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        create: False
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { section: 'PHP', option: 'memory_limit', value: '512M' }
+        - { section: 'PHP', option: 'output_buffering', value: 'Off' }
+        - { section: 'PHP', option: 'max_execution_time', value: '1800' }
+        - { section: 'PHP', option: 'max_input_time', value: '3600' }
+        - { section: 'PHP', option: 'post_max_size', value: '10240M' }
+        - { section: 'PHP', option: 'upload_max_filesize', value: '10240M' }
+        - { section: 'PHP', option: 'date.timezone', value: '{{ ans_timezone.stdout }}' }
+        - { section: 'PHP', option: 'session.cookie_secure', value: 'true' } 
+      loop_control:
+        index_var: index
+      register: php_fpm_cli_conf
+
+    - name: Set fpm php ini values...
+      ini_file:
+        dest: "/etc/php/{{ ans_phpver.stdout }}/fpm/php.ini"
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        create: False
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { section: 'PHP', option: 'memory_limit', value: '512M' }
+        - { section: 'PHP', option: 'output_buffering', value: 'Off' }
+        - { section: 'PHP', option: 'max_execution_time', value: '1800' }
+        - { section: 'PHP', option: 'max_input_time', value: '3600' }
+        - { section: 'PHP', option: 'post_max_size', value: '10240M' }
+        - { section: 'PHP', option: 'upload_max_filesize', value: '10240M' }
+        - { section: 'PHP', option: 'max_file_uploads', value: '100' }
+        - { section: 'PHP', option: 'date.timezone', value: '{{ ans_timezone.stdout }}' }
+        - { section: 'PHP', option: 'session.cookie_secure', value: 'true' }
+      loop_control:
+        index_var: index
+      register: php_fpm_ini_conf
+
+    - name: Set fpm php conf values...
+      ini_file:
+        dest: "/etc/php/{{ ans_phpver.stdout }}/fpm/php-fpm.conf"
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        create: False
+        backup: "{{ true if index == 0 else false }}"
+      loop:
+        - { section: 'global', option: 'emergency_restart_threshold', value: '10' }
+        - { section: 'global', option: 'emergency_restart_interval', value: '1m' }
+        - { section: 'global', option: 'process_control_timeout', value: '10s' }
+      loop_control:
+        index_var: index
+      register: php_fpm_conf
+
+    - name: Set php-fpm service to restart on failure...
+      lineinfile:
+        create: False
+        path: "/etc/systemd/system/multi-user.target.wants/php{{ ans_phpver.stdout }}-fpm.service"
+        insertafter: '^ExecReload=.*?$'
+        line: "{{ item.option }}={{ item.value }}"
+      loop:
+        - { option: 'Restart', value: 'on-failure' }
+        - { option: 'RestartSec', value: '3' }
+        - { option: 'StartLimitIntervalSec', value: '0' }

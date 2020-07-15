@@ -1,0 +1,7 @@
+smtp_srv: "smtp.aol.com"
+smtp_port: "587"
+smtp_tls: "on"
+smtp_starttls: "on"
+smtp_ssl: "off"
+smtp_from: "{{ ans_mailaddr }}"
+smtp_pass: "{{ lookup('env','TARGET_EMAILPASS') }}"

@@ -1,0 +1,129 @@
+    - name: Set PostgreSQL variables if number of server CPUs is more than 8...
+      include_vars: vars/large.yml
+      when: ansible_processor_vcpus >= 8
+
+    - name: Set PostgreSQL variables if number of server CPUs is between 4 and 8...
+      include_vars: vars/medium.yml
+      when: ansible_processor_vcpus >= 4 and ansible_processor_vcpus < 8
+
+    - name: Set PostgreSQL variables if number of server CPUs is less than 4...
+      include_vars: vars/small.yml
+      when: ansible_processor_vcpus < 4
+
+    - name: Set PostgreSQL config variables...
+      ini_file:
+        dest: "/etc/postgresql/{{ ans_pgsqlver.stdout }}/main/postgresql.conf"
+        section: null
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        backup: "{{ true if index == 0 else false }}"
+        create: False
+      loop:
+        - { option: 'max_worker_processes', value: '{{ max_parallel_worker_cpus }}' }
+        - { option: 'max_parallel_workers', value: '{{ max_parallel_worker_cpus }}' }
+        - { option: 'max_parallel_workers_per_gather', value: '{{ max_parallel_gather_cpus }}' }
+        - { option: 'max_connections', value: '200' }
+        - { option: 'shared_buffers', value: '{{ ((ansible_memtotal_mb|int * 0.25) / 2) | round | int }}MB' }
+        - { option: 'effective_cache_size', value: '{{ ((ansible_memtotal_mb|int * 0.75) / 2) | round | int }}MB' }
+        - { option: 'maintenance_work_mem', value: '{{ (((ansible_memtotal_mb|int / 16) * 1024) / 2) | round | int }}kB' }
+        - { option: 'checkpoint_completion_target', value: '0.7' }
+        - { option: 'wal_buffers', value: '16MB' }
+        - { option: 'default_statistics_target', value: '100' }
+        - { option: 'random_page_cost', value: '1.1' }
+        - { option: 'effective_io_concurrency', value: '200' }
+        - { option: 'min_wal_size', value: '1GB' }
+        - { option: 'max_wal_size', value: '4GB' }
+        - { option: 'work_mem', value: '{{ pgsql_work_mem }}kB' }
+        - { option: 'unix_socket_group', value: 'postgres' }
+        - { option: 'unix_socket_permissions', value: '0770' }
+        - { option: 'track_activities', value: 'on' }
+        - { option: 'track_counts', value: 'on' }
+      loop_control:
+        index_var: index
+      register: postgresql_conf
+
+    - name: Set max_parallel_maintenance_workers for PostgreSQL if server v11 or v12...
+      ini_file:
+        dest: "/etc/postgresql/{{ ans_pgsqlver.stdout }}/main/postgresql.conf"
+        option: max_parallel_maintenance_workers
+        section: null
+        value: "{{ max_parallel_gather_cpus }}"
+        create: False
+      when: (ans_pgsqlver.stdout == "11") or
+            (ans_pgsqlver.stdout == "12")
+      register: postgresql_cpu_conf
+
+    - name: Disable peer connection on socket for PostgreSQL...
+      replace:
+        path: /etc/postgresql/{{ ans_pgsqlver.stdout }}/main/pg_hba.conf
+        after: '# TYPE'
+        before: '# Allow replication'
+        regexp: '^(local\s*?)(all\s*?)(all\s*)(peer)$'
+        replace: '\1\2\3md5'
+        backup: yes
+      register: postgresql_socket_conf
+
+    - name: Unset PostgreSQL parallel processing settings for servers with only one CPU, if server v11 or v12...
+      replace:
+        path: "/etc/postgresql/{{ ans_pgsqlver.stdout }}/main/postgresql.conf"
+        after: "Asynchronous Behavior"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
+      loop:
+        - { regexp: '^.*?max_worker_processes.*?$', replace: '#max_worker_processes = 8'}
+        - { regexp: '^.*?max_parallel_workers_per_gather.*?$', replace: '#max_parallel_workers_per_gather = 2'}
+        - { regexp: '^.*?max_parallel_workers.*?$', replace: '#max_parallel_workers = 8'}
+        - { regexp: '^.*?max_parallel_maintenance_workers.*?$', replace: '#max_parallel_maintenance_workers = 2'}
+      when: (ansible_processor_vcpus == "1") and
+            (ans_pgsqlver.stdout == "11") or
+            (ans_pgsqlver.stdout == "12")
+      register: postgresl_one_cpu_twelve_conf
+
+    - name: Create required PostgreSQL users with a random password...
+      vars:
+        authdb_pass: "{{ lookup('password', '~/ansible-authdbuser-database-password.txt length=32 chars=ascii_letters,digits') }}"
+        apidb_pass: "{{ lookup('password', '~/ansible-apidbuser-database-password.txt length=32 chars=ascii_letters,digits') }}"
+      become: True
+      become_user: postgres
+      postgresql_user:
+        login_unix_socket: /var/run/postgresql/
+        db: "{{ item.name }}"
+        name: "{{ item.user }}"
+        password: "{{ item.password }}"
+        priv: "{{ item.privs }}"
+        role_attr_flags: "{{ item.flags }}"
+      loop:
+        - { name: 'authdb', user: 'authdbuser', password: "{{ authdb_pass }}", privs: "ALL", flags: "NOCREATEDB" }
+        - { name: 'postgres', user: 'apidbuser', password: "{{ apidb_pass }}", privs: "CONNECT", flags: "NOINHERIT" }
+      no_log: True
+
+    - name: Create required PostgreSQL databases...
+      become: True
+      become_user: postgres
+      postgresql_db:
+        login_unix_socket: /var/run/postgresql/
+        name: authdb
+        encoding: UTF-8
+        template: template1
+        owner: authdbuser
+
+    - name: Restart PostgreSQL after config changes...
+      systemd:
+        name: postgresql
+        state: restarted
+      when: (postgresql_conf.changed == true) or (postgresql_cpu_conf.changed == true) or (postgresql_socket_conf.changed == true) or (postgresl_one_cpu_twelve_conf.changed == true)
+
+    - name: Add web user to postgres group for PostgreSQL socket access...
+      command: "usermod -aG postgres www-data"
+
+    - name: Create PostgreSQL admin user, set password, grant privs
+      vars:
+        default_adminpassword: "{{ lookup('password', '~/ansible-admin-password.txt length=32 chars=ascii_letters,digits') }}"
+      postgresql_user:
+        name: admin
+        password: "{{ default_adminpassword }}"
+        role_attr_flags: CREATEDB,CREATEROLE,SUPERUSER
+      become: True
+      become_user: postgres
+      no_log: True
+

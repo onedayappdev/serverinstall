@@ -1,0 +1,289 @@
+---
+- hosts: all
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  remote_user: root
+  #ansible_ssh_pass: mypassword
+  #ansible_become_pass: mypassword
+  #become: True
+  gather_facts: False
+  module_defaults:
+    apt:
+      force_apt_get: True
+
+  tasks:
+
+    - name: Update remote server hosts file...
+      vars:
+        domain_name: "{{ lookup('env','TARGET_HOSTNAME') }}"
+        host_name: "{{ lookup('env','TARGET_HOSTNAME') | regex_replace('\\..*?$') }}"
+      replace:
+        path: /etc/hosts
+        regexp: '^(127\.0\.1\.1).*?$'
+        replace: '\1 {{ domain_name }} {{ host_name }}'
+        backup: True
+
+    - name: Ensure that hostname file exists...
+      file:
+        path: /etc/hostname
+        state: touch
+
+    - name: Check hostname presence in /etc/hostname...
+      shell: 'cat /etc/hostname'
+      register: hostname_config
+
+    - name: Update remote server hostname file...
+      vars:
+        config_host_name: "{{ lookup('env','TARGET_HOSTNAME') | regex_replace('\\..*?$') }}"
+      replace:
+        path: /etc/hostname
+        regexp: '^.*?$'
+        replace: "{{ config_host_name }}"
+        backup: True
+      when: hostname_config.stdout == ""
+
+    - set_fact:
+        ans_mailaddr: "{{ lookup('env','TARGET_EMAILADDR') }}"
+        ans_maildomain: "{{ lookup('env','TARGET_EMAILADDR') | regex_replace('[A-Za-z0-9._%+-]+@') }}"
+
+    - set_fact:
+        ans_mailsmtp: "{{ lookup('env', 'TARGET_SMTP') }}"
+        ans_mailport: "{{ lookup('env', 'TARGET_SMTPPORT') }}"
+        ans_mailtls: "{{ lookup('env', 'TARGET_SMTPTLS') }}"
+        ans_mailstls: "{{ lookup('env', 'TARGET_STLS') }}"
+        ans_mailssl: "{{ lookup('env', 'TARGET_SMTPSSL') }}"
+      when: (ans_maildomain != "gmail.com") and
+            (ans_maildomain != "yahoo.com") and
+            (ans_maildomain != "hotmail.com") and
+            (ans_maildomain != "outlook.com") and
+            (ans_maildomain != "aol.com") and
+            (ans_maildomain != "mac.com") and
+            (ans_maildomain != "me.com") and
+            (ans_maildomain != "icloud.com")
+
+    - name: Gathering facts...
+      setup:
+
+    - name: Check to see if dhparam.pem has been generated...
+      stat: 
+        path: /etc/ssl/dhparam.pem
+      register: dhparam_present
+
+    - debug:
+        msg: |
+          "This package generates a new 4096 bit SSL key to make website SSL keys with for increased security. This process can take a long time, so the task will run asynchronously and wait for itself to complete before finishing the server configuration by generating new SSL keys. It is possible, mathematically speaking, for a nation-state level of computing power to compromise the default 1024 bit key that ships with the OpenSSL encryption libraries included in some operating systems. Please do not close the terminal window you started this script in, minimize it and let it finish. If the process fails, you will have an invalid (and insecure) /etc/ssl/dhparam.pem file on your server. Delete it manually before running this installation script again with the following commands... 'ssh server.ip.add.ress' and 'rm -rf /etc/ssl/dhparam.pem'"
+      when: dhparam_present.stat.exists == False
+
+    - name: sleep for 30 seconds to let the user read the above message...
+      vars:
+        config_host: "{{ lookup('env','TARGET_HOST') }}"
+      wait_for:
+        timeout: 30
+      delegate_to: "{{ config_host }}"
+      when: dhparam_present.stat.exists == False
+
+    - name: Generate new dhparam key asynchronously...
+      openssl_dhparam:
+        path: /etc/ssl/dhparam.pem
+        force: False
+        size: 4096
+        mode: 0644
+        owner: root
+      async: 86400
+      poll: 0
+      register: dhparam_status
+
+    - name: Install base requirements...
+      apt: 
+        name: "{{ item.name }}" 
+        update_cache: "{{ true if index == 0 else false }}"
+      loop:
+        - { name: 'acl' }
+        - { name: 'apticron' }
+        - { name: 'curl' }
+        - { name: 'gnupg2' }
+        - { name: 'git' }
+        - { name: 'ssl-cert' }
+        - { name: 'debconf-utils' }
+        - { name: 'apt-transport-https' }
+        - { name: 'tree' }
+        - { name: 'locate' }
+        - { name: 'software-properties-common' }
+        - { name: 'screen' }
+        - { name: 'htop' }
+        - { name: 'net-tools' }
+        - { name: 'zip' }
+        - { name: 'liboath0' }
+        - { name: 'libconfig9' }
+        - { name: 'libmicrohttpd12' }
+        - { name: 'default-mysql-client' }
+        - { name: 'libmysqlclient-dev' }
+        - { name: 'msmtp' }
+        - { name: 'msmtp-mta' }
+        - { name: 'bsd-mailx' }
+        - { name: 'apache2-utils' }
+        - { name: 'build-essential' }
+        - { name: 'libssl-dev' }
+        - { name: 'libcurl4-openssl-dev' }
+        - { name: 'gcc' }
+        - { name: 'make' }
+        - { name: 'openjdk-14-jdk-headless' }
+        - { name: 'autoconf' }
+        - { name: 'pkg-config' }
+        - { name: 'socat' }
+        - { name: 'sqlite3' }
+        - { name: 'uuid-dev' }
+        - { name: 'zlib1g-dev' }
+      loop_control:
+        index_var: index
+
+    - name: Install Nginx...
+      apt: 
+        name: "{{ item.name }}" 
+        update_cache: False
+      loop: 
+        - { name: 'nginx-common' }
+        - { name: 'nginx-extras' }
+
+    - name: Install PostgreSQL...
+      apt: 
+        name: postgresql
+        update_cache: False
+
+    - name: Install base Python modules
+      apt: 
+        name: "{{ item.name }}" 
+        update_cache: False
+      loop: 
+        - { name: 'python3-pip' }
+        - { name: 'python3-setuptools' }
+        - { name: 'python3-wheel' }
+        - { name: 'python3-lxml' }
+        - { name: 'python3-psycopg2' }
+
+    - name: Install PHP and modules...
+      apt: 
+        name: "{{ item.name }}" 
+        update_cache: False
+      loop: 
+        - { name: 'php-common' }
+        - { name: 'php-dev' }
+        - { name: 'php-pear' }
+        - { name: 'php-fpm' }
+        - { name: 'php-bcmath' }
+        - { name: 'php-soap' }
+        - { name: 'php-gd' }
+        - { name: 'php-mysql' }
+        - { name: 'php-pgsql' }
+        - { name: 'php-sqlite3' }
+        - { name: 'php-curl' }
+        - { name: 'php-xml' }
+        - { name: 'php-zip' }
+        - { name: 'php-intl' }
+        - { name: 'php-mbstring' }
+        - { name: 'php-json' }
+        - { name: 'php-bz2' }
+        - { name: 'php-ldap' }
+
+    - name: Create PECL ini file for cli and fpm...
+      file:
+        path: /etc/php/7.4/mods-available/pecl.ini
+        state: touch
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Link PECL ini file for cli and fpm...
+      file:
+        src: /etc/php/7.4/mods-available/pecl.ini
+        dest: "{{ item.dest }}"
+        owner: root
+        group: root
+        state: link
+      loop:
+        - { dest: '/etc/php/7.4/cli/conf.d/20-pecl.ini' }
+        - { dest: '/etc/php/7.4/fpm/conf.d/20-pecl.ini' }
+
+    - name: Set PECL php.ini config...
+      shell: pear config-set php_ini /etc/php/7.4/mods-available/pecl.ini
+
+    - name: Get time zone...
+      command: "cat /etc/timezone"
+      register: ans_timezone
+
+    - name: Get installed PHP version...
+      shell: "/bin/ls /etc/php | awk '{print $1}'"
+      register: ans_phpver
+
+    - name: Get installed PostgreSQL server version...
+      shell: "/bin/ls /etc/postgresql | awk '{print $1}'"
+      register: ans_pgsqlver
+
+    - name: Detected values are...
+      debug:
+        msg: "Server time zone: {{ ans_timezone.stdout }}, number of CPUs: {{ ansible_processor_vcpus }}, Memory in megabytes: {{ ansible_memtotal_mb }}, IP address: {{ ansible_default_ipv4.address }}, PHP version: {{ ans_phpver.stdout }}, PostgreSQL version: {{ ans_pgsqlver.stdout }}, and the admin email domain is {{ ans_maildomain }}."
+     
+    - name: Set up PostgreSQL...
+      import_tasks: postgresql/postgresql.yml
+
+    - name: Set up msmtp for server email notifications...
+      import_tasks: msmtp/msmtp.yml
+
+    - name: Set up nginx...
+      import_tasks: nginx/nginx.yml
+
+    - name: Set up php...
+      import_tasks: php/php.yml
+
+    - name: Set up ufw firewall if the user wanted it...
+      vars:
+        ufw_question: "{{ lookup('env','UFW_ANSWER') }}"
+      import_tasks: ufw/ufw.yml
+      when: ufw_question == "y"
+
+    - name: Set up nodejs...
+      import_tasks: nodejs/nodejs.yml
+
+    - name: Set up nodered...
+      import_tasks: nodered/nodered.yml
+
+    - name: Set up rssbridge...
+      import_tasks: rssbridge/rssbridge.yml
+
+    - name: Set up apticron...
+      import_tasks: apticron/apticron.yml
+
+    - name: Set up phpPgAdmin...
+      import_tasks: phppgadmin/phppgadmin.yml
+
+    - name: set up Glewlwyd...
+      import_tasks: glewlwyd/glewlwyd.yml
+
+    - name: set up Postgrest...
+      import_tasks: postgrest/postgrest.yml
+
+    - name: Wait until the dhparam key is computed before continuing...
+      async_status:
+        jid: "{{ dhparam_status.ansible_job_id }}"
+      register: dhparam_result
+      until: dhparam_result.finished
+      delay: 30
+      retries: 2880
+
+    - name: Set up acme client and issue SSL certificates...
+      import_tasks: acme/acme.yml
+
+    - name: Update systemd services and restart changed ones...
+      systemd:
+        name: "{{ item.service }}"
+        daemon_reload: "{{ true if index == 0 else false }}"
+        enabled: True
+        state: restarted
+      loop:
+        - { service: 'php{{ ans_phpver.stdout }}-fpm' }
+        - { service: 'nginx' }
+        - { service: 'nodered' }
+        - { service: 'glewlwyd' }
+        - { service: 'postgrest' }
+      loop_control:
+        index_var: index

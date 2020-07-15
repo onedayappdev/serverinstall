@@ -1,0 +1,77 @@
+    - name: Check for presence of acme.sh before downloading...
+      stat:
+        path: "/root/.acme.sh/acme.sh"
+      check_mode: True
+      register: acme_check_result
+
+    - name: Download acme.sh client...
+      shell: "curl https://get.acme.sh | sh"
+      args:
+        warn: False
+        creates: "/root/.acme.sh"
+        chdir: "/root"
+      when: acme_check_result.stat.exists == false
+
+    - name: Create acme directories...
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        recurse: True
+      loop:
+        - { path: '/var/www/.well-known/acme-challenge', mode: '0750', owner: 'www-data', group: 'www-data' }
+        - { path: '/etc/letsencrypt', mode: '0755', owner: 'root', group: 'root' }
+        - { path: '/etc/letsencrypt/rsa-certs', mode: '0700', owner: 'root', group: 'root' }
+        - { path: '/etc/letsencrypt/ecc-certs', mode: '0700', owner: 'root', group: 'root' }
+      when: acme_check_result.stat.exists == false
+
+    - name: Check for presence of SSL keys before using acme to issue new ones...
+      stat:
+        path: /etc/letsencrypt/ecc-certs/cert.pem
+      check_mode: True
+      register: cert_check_result
+
+    - name: Set acme to auto-upgrade itself...
+      raw: "~/.acme.sh/acme.sh --force --upgrade --auto-upgrade"
+      args:
+        executable: /bin/bash
+      when: cert_check_result.stat.exists == false
+
+    - name: Issue acme RSA certificate for this server...
+      raw: "~/.acme.sh/acme.sh --force --issue -w /var/www/letsencrypt -d {{ ansible_fqdn }} \
+        --keylength 4096 --key-file /etc/letsencrypt/rsa-certs/privkey.pem \
+        --ca-file /etc/letsencrypt/rsa-certs/chain.pem \
+        --cert-file /etc/letsencrypt/rsa-certs/cert.pem \
+        --fullchain-file /etc/letsencrypt/rsa-certs/fullchain.pem \
+        --post-hook '/usr/sbin/service nginx restart'"
+      args:
+        executable: /bin/bash
+      register: cert_rsa_issue
+      when: cert_check_result.stat.exists == false
+
+    - name: Issue acme ECC certificate for this server...
+      raw: "~/.acme.sh/acme.sh --force --issue -w /var/www/letsencrypt -d {{ ansible_fqdn }} \
+        --keylength ec-384 --key-file /etc/letsencrypt/ecc-certs/privkey.pem \
+        --ca-file /etc/letsencrypt/ecc-certs/chain.pem \
+        --cert-file /etc/letsencrypt/ecc-certs/cert.pem \
+        --fullchain-file /etc/letsencrypt/ecc-certs/fullchain.pem \
+        --post-hook '/usr/sbin/service nginx restart'"
+      args:
+        executable: /bin/bash
+      register: cert_ecc_issue
+      when: cert_check_result.stat.exists == false
+
+    - name: Apply nginx ssl config...
+      template:
+        src: "{{ item.source }}"
+        dest: "{{ item.dest }}"
+        force: True
+      loop:
+        - { source: 'templates/sites-available/sites_conf.j2', dest: '/etc/nginx/sites-available/sites.conf' }
+        - { source: 'templates/ssl_conf.j2', dest: '/etc/nginx/ssl.conf' }
+        - { source: 'templates/nginx_main_conf.j2', dest: '/etc/nginx/nginx.conf' }
+        - { source: 'templates/robots_txt.j2', dest: '/var/www/html/robots.txt' }
+#      when: (cert_rsa_issue.changed == true) or
+#            (cert_ecc_issue.changed == true)

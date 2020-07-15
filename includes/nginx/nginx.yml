@@ -1,0 +1,54 @@
+    - name: Check for presence of existing configuration...
+      stat:
+        path: /etc/nginx/sites-enabled/sites.conf
+      check_mode: True
+      register: nginx_config
+
+    - name: Set nginx initial configuration...
+      template:
+        src: "{{ item.source }}"
+        dest: "{{ item.dest }}"
+        backup: True
+      loop:
+        - { source: 'templates/nginx_init_conf.j2', dest: '/etc/nginx/nginx.conf' }
+        - { source: 'templates/header_conf.j2', dest: '/etc/nginx/header.conf' }
+        - { source: 'templates/proxy_conf.j2', dest: '/etc/nginx/proxy.conf' }
+        - { source: 'templates/optimization_conf.j2', dest: '/etc/nginx/optimization.conf' }
+        - { source: 'templates/php_optimization_conf.j2', dest: '/etc/nginx/php_optimization.conf' }
+        - { source: 'templates/conf.d/default_conf.j2', dest: '/etc/nginx/conf.d/default.conf' }
+        - { source: 'templates/conf.d/letsencrypt_conf.j2', dest: '/etc/nginx/conf.d/letsencrypt.conf' }
+        - { source: 'templates/sites-available/sites_init_conf.j2', dest: '/etc/nginx/sites-available/sites.conf' }
+        - { source: 'templates/conf.d/stub_status_conf.j2', dest: '/etc/nginx/conf.d/stub_status.conf' }
+      register: nginx_init
+      when: nginx_config.stat.exists == false
+
+    - name: Symlink nginx sites config from sites-available to sites-enabled...
+      file:
+        src: '../sites-available/sites.conf'
+        dest: '/etc/nginx/sites-enabled/sites.conf'
+        state: link
+      when: nginx_config.stat.exists == false
+
+    - name: Disable extraneous modules from 'extra'...
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop:
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-lua.conf ' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-fancyindex.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-perl.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-auth-pam.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-dav-ext.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-echo.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-mail.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-nchan.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-upstream-fair.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-uploadprogress.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-cache-purge.conf' }
+        - { path: '/etc/nginx/modules-enabled/50-mod-http-xslt-filter.conf' }
+
+    - name: Restart nginx...
+      systemd:
+        name: nginx
+        state: restarted
+      when: nginx_init.changed == true

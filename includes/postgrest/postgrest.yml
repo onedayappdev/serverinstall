@@ -1,0 +1,66 @@
+    - name: Create Postgrest user and group...
+      user:
+        name: postgrest
+        home: /etc/postgrest
+        create_home: False
+        system: True
+
+    - name: Check if Postgrest source files exist in /usr/local/src...
+      find:
+        paths: /usr/local/src
+        patterns: postgrest-v7.0.1-linux-x64-static.tar.xz
+      register: postgrest_src_check
+
+    - name: Download Postgrest if it doesn't exist in /usr/src...
+      get_url:
+        url: https://github.com/onedayappdev/postgrest/raw/master/postgrest-v7.0.1-linux-x64-static.tar.xz
+        dest: /usr/local/src/postgrest-v7.0.1-linux-x64-static.tar.xz
+        mode: 0644
+      when: (postgrest_src_check.matched == 0) or
+            (postgrest_src_check.changed == true)
+
+    - name: Check to see if Postgrest files already exist on server...
+      stat:
+        path: /usr/local/sbin/postgrest
+      check_mode: True
+      register: postgrest_install
+
+    - name: Unzip Postgrest source files if a fresh download...
+      unarchive:
+        src: /usr/local/src/postgrest-v7.0.1-linux-x64-static.tar.xz
+        dest: /usr/local/sbin
+        remote_src: True
+        owner: postgrest
+        group: postgrest
+        mode: 0750
+      when: postgrest_install.stat.exists == false
+
+    - name: Create Postgrest config folder...
+      file:
+        path: /etc/postgrest
+        state: directory
+        owner: postgrest
+        group: postgrest
+        mode: 0750
+      register: postgrest_config_create
+
+    - name: Create Postgrest config...
+      vars:
+        glewlwyd_key: "{{ lookup('password', '~/ansible-glewlwyd-sha-key.txt length=64 chars=ascii_letters,digits') }}"
+        pgrstdb_user: "apidbuser"
+        pgrstdb_pass: "{{ lookup('password', '~/ansible-apidbuser-database-password.txt length=32 chars=ascii_letters,digits') }}"
+      template:
+        src: templates/api_conf.j2
+        dest: /etc/postgrest/api.conf
+        owner: postgrest
+        group: postgrest
+        mode: 0640
+      when: postgrest_config_create.changed == true
+
+    - name: Add Postgrest user to postgres group for PostgreSQL socket access...
+      command: "usermod -aG postgres postgrest"
+
+    - name: Create Postgrest systemd service...
+      template:
+        src: templates/postgrest_service.j2
+        dest: /etc/systemd/system/postgrest.service
