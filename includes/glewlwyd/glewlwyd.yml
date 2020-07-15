@@ -95,7 +95,6 @@
         schema: public
       become: True
       become_user: postgres
-      when: glewlwyd_config_create.changed == true
  
     - name: Set Glewlwyd admin password, set roles fields in initial databse SQL script...
       vars:
