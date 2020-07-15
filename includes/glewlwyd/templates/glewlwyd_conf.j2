@@ -13,7 +13,7 @@ port=4593
 #bind_address="127.0.0.1"
 
 # external url to access to this instance
-external_url="https://{{ ansible_fqdn }}/auth"
+external_url="https://{{ ansible_fqdn }}"
 
 # login url relative to external url
 login_url="login.html"
@@ -98,7 +98,7 @@ hash_algorithm = "SHA512"
 database =
 {
    type     = "postgre"
-   conninfo = "host=/var/run/postgresql port=5432 dbname={{ authdb_name }} user={{ authdb_user }} password={{ authdb_pass }}"
+   conninfo = "host=localhost port=5432 dbname={{ authdb_name }} user={{ authdb_user }} password={{ authdb_pass }}"
 };
 
 # mime types for webapp files
