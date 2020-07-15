@@ -73,5 +73,5 @@
         - { source: 'templates/ssl_conf.j2', dest: '/etc/nginx/ssl.conf' }
         - { source: 'templates/nginx_main_conf.j2', dest: '/etc/nginx/nginx.conf' }
         - { source: 'templates/robots_txt.j2', dest: '/var/www/html/robots.txt' }
-#      when: (cert_rsa_issue.changed == true) or
-#            (cert_ecc_issue.changed == true)
+      when: (cert_rsa_issue.changed == true) or
+            (cert_ecc_issue.changed == true)
