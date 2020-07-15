@@ -145,10 +145,10 @@
         mode: 0644
         backup: True
       loop:
-        - { src: "includes/glewlwyd/templates/config_json.j2", dest: "/usr/share/glewlwyd/webapp/config.json" }
-        - { src: "includes/glewlwyd/templates/translations_en.j2", dest: "/usr/share/glewlwyd/webapp/locales/en/translations.json" }
-        - { src: "includes/glewlwyd/templates/translations_fr.j2", dest: "/usr/share/glewlwyd/webapp/locales/fr/translations.json" }
-        - { src: "includes/glewlwyd/templates/translations_nl.j2", dest: "/usr/share/glewlwyd/webapp/locales/nl/translations.json" }
+        - { src: "templates/config_json.j2", dest: "/usr/share/glewlwyd/webapp/config.json" }
+        - { src: "templates/translations_en.j2", dest: "/usr/share/glewlwyd/webapp/locales/en/translations.json" }
+        - { src: "templates/translations_fr.j2", dest: "/usr/share/glewlwyd/webapp/locales/fr/translations.json" }
+        - { src: "templates/translations_nl.j2", dest: "/usr/share/glewlwyd/webapp/locales/nl/translations.json" }
       when: glewlwyd_db_init.changed == true
 
     - name: Update-rc.d for Glewlwyd script...
