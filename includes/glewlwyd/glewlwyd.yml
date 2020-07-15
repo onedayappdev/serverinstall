@@ -25,7 +25,7 @@
       check_mode: True
       register: glewlwyd_install
 
-    - name: Create Glewlwyd config, log, src, and run folders...
+    - name: Create Glewlwyd config, src, and run folders...
       file:
         path: "{{ item.path }}"
         state: directory
