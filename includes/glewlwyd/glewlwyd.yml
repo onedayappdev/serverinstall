@@ -25,7 +25,7 @@
       check_mode: True
       register: glewlwyd_install
 
-    - name: Create Glewlwyd config, log, src, and run folders...
+    - name: Create Glewlwyd config, src, and run folders...
       file:
         path: "{{ item.path }}"
         state: directory
@@ -63,7 +63,7 @@
       vars:
         authdb_name: "authdb"
         authdb_user: "authdbuser"
-        authdb_pass: "{{ lookup('password', '~/ansible-authdb_user-database-password.txt length=32 chars=ascii_letters,digits') }}"
+        authdb_pass: "{{ lookup('password', '~/ansible-authdbuser-database-password.txt length=32 chars=ascii_letters,digits') }}"
       template:
         src: templates/glewlwyd_conf.j2
         dest: /etc/glewlwyd/glewlwyd.conf
@@ -95,7 +95,6 @@
         schema: public
       become: True
       become_user: postgres
-      when: glewlwyd_config_create.changed == true
  
     - name: Set Glewlwyd admin password, set roles fields in initial databse SQL script...
       vars:
@@ -131,7 +130,7 @@
       vars:
         authdb_name: "authdb"
         authdb_user: "authdbuser"
-        authdb_pass: "{{ lookup('password', '~/ansible-authdb_user-database-password.txt length=32 chars=ascii_letters,digits') }}"
+        authdb_pass: "{{ lookup('password', '~/ansible-authdbuser-database-password.txt length=32 chars=ascii_letters,digits') }}"
       postgresql_query:
         db: "{{ authdb_name }}"
         login_user: "{{ authdb_user }}"
@@ -146,10 +145,10 @@
         mode: 0644
         backup: True
       loop:
-        - { src: "includes/glewlwyd/templates/config_json.j2", dest: "/usr/share/glewlwyd/webapp/config.json" }
-        - { src: "includes/glewlwyd/templates/translations_en.j2", dest: "/usr/share/glewlwyd/webapp/locales/en/translations.json" }
-        - { src: "includes/glewlwyd/templates/translations_fr.j2", dest: "/usr/share/glewlwyd/webapp/locales/fr/translations.json" }
-        - { src: "includes/glewlwyd/templates/translations_nl.j2", dest: "/usr/share/glewlwyd/webapp/locales/nl/translations.json" }
+        - { src: "templates/config_json.j2", dest: "/usr/share/glewlwyd/webapp/config.json" }
+        - { src: "templates/translations_en.j2", dest: "/usr/share/glewlwyd/webapp/locales/en/translations.json" }
+        - { src: "templates/translations_fr.j2", dest: "/usr/share/glewlwyd/webapp/locales/fr/translations.json" }
+        - { src: "templates/translations_nl.j2", dest: "/usr/share/glewlwyd/webapp/locales/nl/translations.json" }
       when: glewlwyd_db_init.changed == true
 
     - name: Update-rc.d for Glewlwyd script...

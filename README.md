@@ -41,7 +41,7 @@ If you told it "yes" on the firewall option it will install UFW and restrict inc
 
 1. Download [Postman](https://www.postman.com/) if you don't have it, it's very useful for testing APIs.
 
-2. Log into phpPgAdmin, click on the API database, and then click "SQL" and paste/run the contents of the `permissions_setup.sql` file that you downloaded from this repository. It sets the proper permissions on the database for the API.
+2. Log into phpPgAdmin, and create a database named "api" within the web interface. If you do so rather than via CLI or via Ansible, there is a plugin that will allow graphical table design, which we'll use in the video series on these servers to make creating database schemas a LOT easier. Then click on the "api" database after you've created it,  click "SQL" in the upper right hand corner of the window, and paste/run the contents of the `permissions_setup.sql` file that you downloaded from this repository. It sets the proper permissions on the database for the API.
 
 3. Log into your Glewlwyd instance and click `Users`, then the pencil to edit the `Administrator` user, and add the scope `openid` to the admin account, as well as the role `web_admin`.
 

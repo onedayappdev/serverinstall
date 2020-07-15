@@ -93,7 +93,7 @@
         priv: "{{ item.privs }}"
         role_attr_flags: "{{ item.flags }}"
       loop:
-        - { name: 'authdb', user: 'authdbuser', password: "{{ authdb_pass }}", privs: "ALL", flags: "NOCREATEDB" }
+        - { name: 'postgres', user: 'authdbuser', password: "{{ authdb_pass }}", privs: "CONNECT", flags: "NOINHERIT" }
         - { name: 'postgres', user: 'apidbuser', password: "{{ apidb_pass }}", privs: "CONNECT", flags: "NOINHERIT" }
       no_log: True
 
@@ -104,7 +104,6 @@
         login_unix_socket: /var/run/postgresql/
         name: authdb
         encoding: UTF-8
-        template: template1
         owner: authdbuser
 
     - name: Restart PostgreSQL after config changes...

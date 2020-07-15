@@ -21,7 +21,7 @@
         group: "{{ item.group }}"
         recurse: True
       loop:
-        - { path: '/var/www/.well-known/acme-challenge', mode: '0750', owner: 'www-data', group: 'www-data' }
+        - { path: '/var/www/letsencrypt/.well-known/acme-challenge', mode: '0750', owner: 'www-data', group: 'www-data' }
         - { path: '/etc/letsencrypt', mode: '0755', owner: 'root', group: 'root' }
         - { path: '/etc/letsencrypt/rsa-certs', mode: '0700', owner: 'root', group: 'root' }
         - { path: '/etc/letsencrypt/ecc-certs', mode: '0700', owner: 'root', group: 'root' }

@@ -13,7 +13,7 @@ port=4593
 #bind_address="127.0.0.1"
 
 # external url to access to this instance
-external_url="https://{{ ansible_fqdn }}/auth"
+external_url="https://{{ ansible_fqdn }}"
 
 # login url relative to external url
 login_url="login.html"
@@ -68,12 +68,12 @@ plugin_module_path="/usr/lib/glewlwyd/plugin"
 
 # TLS/SSL configuration values
 use_secure_connection=false
-#secure_connection_key_file="/etc/glewlwyd/server.key"
-#secure_connection_pem_file="/etc/glewlwyd/server.crt"
-#secure_connection_ca_file="/etc/glewlwyd/ca.crt"
+secure_connection_key_file="/etc/glewlwyd/server.key"
+secure_connection_pem_file="/etc/glewlwyd/server.crt"
+secure_connection_ca_file="/etc/glewlwyd/ca.crt"
 
 # Algorithms available are SHA1, SHA256, SHA512, MD5, default is MD5
-hash_algorithm = "SHA512"
+hash_algorithm = "SHA256"
 
 # MariaDB/Mysql database connection
 #database =
@@ -98,7 +98,7 @@ hash_algorithm = "SHA512"
 database =
 {
    type     = "postgre"
-   conninfo = "host=/var/run/postgresql port=5432 dbname={{ authdb_name }} user={{ authdb_user }} password={{ authdb_pass }}"
+   conninfo = "host=localhost port=5432 dbname={{ authdb_name }} user={{ authdb_user }} password={{ authdb_pass }}"
 };
 
 # mime types for webapp files
