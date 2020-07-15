@@ -127,7 +127,6 @@
         - { name: 'libcurl4-openssl-dev' }
         - { name: 'gcc' }
         - { name: 'make' }
-        - { name: 'openjdk-14-jdk-headless' }
         - { name: 'autoconf' }
         - { name: 'pkg-config' }
         - { name: 'socat' }
