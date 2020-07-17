@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "ae1020d8-f5c7-4962-bf64-b4682c49f8a3",
-		"name": "Postgrest Oauth2",
+		"_postman_id": "536d7db7-2040-41f1-9980-10c7bdeb8461",
+		"name": "Postgrest Oauth",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -11,7 +11,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "f6f72af2-c9d3-4df1-a90e-a2c24cdbbaff",
+						"id": "bc120156-d25b-46b0-a4a6-d4b9112ab8fd",
 						"exec": [
 							"var data = pm.response.json();",
 							"pm.environment.set('actoken', data.access_token);",
@@ -74,7 +74,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "714a6b86-be1a-41a3-946a-340f80d9fb9f",
+						"id": "bbedfd6d-0d7f-488f-80fc-374b6476ba82",
 						"exec": [
 							"var data = pm.response.json();",
 							"pm.environment.set('actoken', data.access_token);",
@@ -116,18 +116,15 @@
 					]
 				},
 				"url": {
-					"raw": "https://{{url}}/authentication/auth/realms/master/protocol/openid-connect/token",
+					"raw": "https://{{url}}/authsrv/api/postgrest/token",
 					"protocol": "https",
 					"host": [
 						"{{url}}"
 					],
 					"path": [
-						"authentication",
-						"auth",
-						"realms",
-						"master",
-						"protocol",
-						"openid-connect",
+						"authsrv",
+						"api",
+						"postgrest",
 						"token"
 					]
 				}
@@ -140,7 +137,7 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "261153d9-cb0f-43dc-8a6a-5426a2db4944",
+						"id": "b43a2fd3-7642-49a3-8ce5-b65ec0ad3782",
 						"exec": [
 							"var data = pm.response.json();",
 							"pm.environment.set('actoken', data.access_token);",
@@ -154,16 +151,6 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{retoken}}",
-							"type": "string"
-						}
-					]
-				},
 				"method": "POST",
 				"header": [],
 				"body": {
@@ -203,9 +190,15 @@
 			"response": []
 		},
 		{
-			"name": "Postgrest",
+			"name": "Postgrest Swagger",
 			"protocolProfileBehavior": {
-				"disabledSystemHeaders": {}
+				"disabledSystemHeaders": {
+					"host": true,
+					"user-agent": true,
+					"accept": true,
+					"accept-encoding": true,
+					"connection": true
+				}
 			},
 			"request": {
 				"auth": {
@@ -221,14 +214,84 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://{{url}}/api/",
+					"raw": "https://{{url}}/api",
+					"protocol": "https",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Postgrest Post",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{actoken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"key\":\"value\"}"
+				},
+				"url": {
+					"raw": "https://{{url}}/api/table",
 					"protocol": "https",
 					"host": [
 						"{{url}}"
 					],
 					"path": [
 						"api",
-						""
+						"table"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Postgrest Patch",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{actoken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"key\":\"value\"}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{url}}/api/table",
+					"protocol": "https",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"table"
 					]
 				}
 			},
@@ -239,7 +302,7 @@
 		{
 			"listen": "prerequest",
 			"script": {
-				"id": "4da03d48-badd-4df5-b68c-0361fdcd1020",
+				"id": "42ee163c-9744-42f7-8dd6-42355f92b517",
 				"type": "text/javascript",
 				"exec": [
 					""
@@ -249,7 +312,7 @@
 		{
 			"listen": "test",
 			"script": {
-				"id": "79921334-68aa-40c3-835d-e1f6003b2368",
+				"id": "a3b38003-96b2-4690-b594-89a9efa0f0f5",
 				"type": "text/javascript",
 				"exec": [
 					""
